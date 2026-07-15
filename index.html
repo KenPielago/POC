@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Budgetra — Plan Your Trip</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <h1>Plan Your Trip</h1>
+    <p>Routes, budget, and dates — everything for your journey in one place.</p>
+  </div>
+
+  <div class="profile-row" id="profileRow"></div>
+
+  <div class="ask-pill">
+    <input type="text" id="notes" placeholder="✨ Ask AI — e.g. beach trip under ₱10,000" autocomplete="off" />
+    <button class="ask-btn" id="askBtn" type="button" title="Ask AI">➤</button>
+  </div>
+  <div class="examples">
+    <button class="example-chip" type="button" data-q="Where should I go for a beach trip under ₱10,000?">Beach trip under ₱10,000</button>
+    <button class="example-chip" type="button" data-q="Somewhere warm this weekend">Somewhere warm this weekend</button>
+    <button class="example-chip" type="button" data-q="Best food trip destination near me">Best food trip near me</button>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">Destination</div>
+    <div class="loc-row">
+      <div class="loc-field">
+        <div class="field">
+          <input type="text" id="origin" placeholder="From — city or country" autocomplete="off" />
+          <span class="cur-badge" id="originBadge"></span>
+        </div>
+        <div class="loc-list" id="originList"></div>
+      </div>
+      <button class="swap-btn" id="swapBtn" type="button" title="Swap">⇄</button>
+      <div class="loc-field">
+        <div class="field">
+          <input type="text" id="destination" placeholder="To — anywhere" autocomplete="off" />
+          <span class="cur-badge" id="destinationBadge"></span>
+        </div>
+        <div class="loc-list" id="destinationList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">Budget</div>
+    <div class="field">
+      <span class="budget-sym" id="budgetSym"></span>
+      <input type="text" id="budget" placeholder="e.g. 100,000 or 5,000 – 10,000" autocomplete="off" />
+    </div>
+    <div id="convertResult"></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">Travel Dates</div>
+    <div class="dates-row">
+      <div class="field"><input type="date" id="departDate" /></div>
+      <span class="date-sep">to</span>
+      <div class="field"><input type="date" id="returnDate" /></div>
+    </div>
+  </div>
+
+  <div class="footer-row">
+    <div class="info-note" id="infoNote">Fill in any detail — AI handles the rest.</div>
+    <div class="footer-actions">
+      <button class="btn-ghost" id="saveDraftBtn" type="button">Save Draft</button>
+      <button class="btn-primary" id="nextBtn" type="button">Next</button>
+    </div>
+  </div>
+
+  <div class="result-area" id="resultArea"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
