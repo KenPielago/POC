@@ -28,17 +28,24 @@ const toast = document.getElementById("toast");
 // after the pickers, before any user event can fire.
 const onDetectionChange = () => converter?.onDetectionChange();
 
-function pickerFor(key, input) {
+function pickerFor(key, input, extra = {}) {
   return createLocationPicker({
     input,
     badge: document.getElementById(key + "Badge"),
     list: document.getElementById(key + "List"),
     onSelectionChange: onDetectionChange,
     onSubmit: planTrip,
+    ...extra,
   });
 }
 const originPicker = pickerFor("origin", originEl);
-const destinationPicker = pickerFor("destination", destinationEl);
+// Destination is where you're actually headed, so keep suggestions to
+// specific cities rather than whole countries, and personalize the
+// empty-state shortlist to what the user picked in the Profile Builder.
+const destinationPicker = pickerFor("destination", destinationEl, {
+  citiesOnly: true,
+  interests: getProfileInterests(),
+});
 
 const converter = createCurrencyConverter({
   container: document.getElementById("convertResult"),
@@ -112,11 +119,12 @@ function flashInvalid(message) {
 (function renderProfileRow() {
   const interests = getProfileInterests();
   const row = document.getElementById("profileRow");
+  const expensesLink = `<a href="expenses.html">Track Expenses</a>`;
   if (interests.length) {
     row.innerHTML = interests.map(i => `<span class="profile-tag">${escapeHtml(i)}</span>`).join("")
-      + ` <a href="profile.html">Edit</a>`;
+      + ` <a href="profile.html">Edit</a> · ${expensesLink}`;
   } else {
-    row.innerHTML = `<a href="profile.html">Set up your travel interests →</a>`;
+    row.innerHTML = `<a href="profile.html">Set up your travel interests →</a> · ${expensesLink}`;
   }
 })();
 

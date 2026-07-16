@@ -1,7 +1,7 @@
 // location-picker.js — type-ahead location combobox with a flag + currency
 // badge. Pure UI component: selection changes are reported via callbacks.
 
-import { matchLocations, detectLocation, flagImg } from "./locations.js";
+import { matchLocations, detectLocation, flagImg, getPopularCities } from "./locations.js";
 import { escapeHtml } from "./utils.js";
 
 /**
@@ -12,10 +12,16 @@ import { escapeHtml } from "./utils.js";
  * @param {() => void} opts.onSelectionChange fired whenever the detected
  *   location (and therefore its currency) may have changed
  * @param {() => void} opts.onSubmit fired on Enter when no suggestion is open
+ * @param {boolean} [opts.citiesOnly] restrict suggestions to specific cities
+ *   (excludes whole-country entries) — for a "destination" field, not "origin"
+ * @param {string[]} [opts.interests] the user's saved profile interests, used
+ *   to personalize the empty-state suggestion list (citiesOnly fields only)
  */
-export function createLocationPicker({ input, badge, list, onSelectionChange, onSubmit }) {
+export function createLocationPicker({ input, badge, list, onSelectionChange, onSubmit, citiesOnly = false, interests = [] }) {
   let selection = null;
   let matches = [];
+  let showingPopular = false;
+  let popularLabel = "";
   let activeIdx = -1;
 
   function renderBadge() {
@@ -42,7 +48,9 @@ export function createLocationPicker({ input, badge, list, onSelectionChange, on
 
   function renderList() {
     if (!matches.length) { close(); return; }
-    list.innerHTML = matches.map((loc, i) => `
+    const label = showingPopular
+      ? `<div class="loc-list-label">${escapeHtml(popularLabel)}</div>` : "";
+    list.innerHTML = label + matches.map((loc, i) => `
       <div class="loc-item ${i === activeIdx ? "active" : ""}" data-idx="${i}">
         ${flagImg(loc.iso)}
         <span class="loc-name">${escapeHtml(loc.n)}${loc.c ? ` <small>· ${escapeHtml(loc.c)}</small>` : ""}</span>
@@ -58,18 +66,35 @@ export function createLocationPicker({ input, badge, list, onSelectionChange, on
     });
   }
 
+  function refreshMatches() {
+    if (input.value.trim()) {
+      showingPopular = false;
+      matches = matchLocations(input.value, { citiesOnly });
+    } else if (citiesOnly) {
+      // Nothing typed yet — surface popular cities instead of an empty list,
+      // personalized to the user's saved interests when available.
+      const { cities, personalized } = getPopularCities(interests);
+      showingPopular = true;
+      popularLabel = personalized ? "Picked for your interests" : "Popular destinations";
+      matches = cities;
+    } else {
+      showingPopular = false;
+      matches = [];
+    }
+  }
+
   input.addEventListener("input", () => {
     if (selection && input.value !== selection.n) {
       selection = null;
       renderBadge();
     }
-    matches = matchLocations(input.value);
+    refreshMatches();
     activeIdx = -1;
     renderList();
   });
 
   input.addEventListener("focus", () => {
-    matches = matchLocations(input.value);
+    refreshMatches();
     renderList();
   });
 

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Budgetra — Track Expenses</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <h1>Track Expenses</h1>
+    <p>Scan a receipt and Budgetra keeps your trip budget up to date.</p>
+  </div>
+
+  <div class="profile-row"><a href="index.html">← Back to Trip Planner</a></div>
+
+  <div class="section budget-card" id="budgetCard"></div>
+
+  <div class="section">
+    <div class="sec-label">Scan a Receipt</div>
+    <div class="dropzone" id="dropzone">
+      <div class="dz-icon">🧾</div>
+      <div class="dz-text">Tap to choose a photo, or drag one here</div>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" capture="environment" hidden />
+    </div>
+    <div id="previewArea"></div>
+    <button class="btn-primary" id="scanBtn" type="button" style="margin-top:16px; display:none;">Scan Receipt</button>
+    <div id="reviewArea"></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label">Trip History</div>
+    <div class="expense-list" id="expenseList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/expenses.js"></script>
+</body>
+</html>

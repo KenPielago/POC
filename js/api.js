@@ -23,3 +23,18 @@ export async function requestCurrencyConversion(amount, from, to) {
   );
   return res.json();
 }
+
+/**
+ * Sends a receipt photo for OCR extraction (merchant, total, currency, date,
+ * category). Resolves to { success, result } or { success: false, error }.
+ * @param {File} file the receipt image
+ * @param {string} [currencyHint] the trip's tracked currency, used when the
+ *   receipt's own currency is ambiguous
+ */
+export async function requestReceiptScan(file, currencyHint) {
+  const formData = new FormData();
+  formData.append("receipt", file);
+  if (currencyHint) formData.append("currencyHint", currencyHint);
+  const res = await fetch("/receipt-api.php", { method: "POST", body: formData });
+  return res.json();
+}

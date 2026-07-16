@@ -4,6 +4,8 @@ const PROFILE_KEY = "budgetra_profile_interests";
 const ORIGIN_KEY = "budgetra_origin";
 const DRAFT_KEY = "budgetra_draft";
 const CONVERTER_KEY = "budgetra_converter";
+const EXPENSES_KEY = "budgetra_expenses";
+const TRIP_BUDGET_KEY = "budgetra_trip_budget";
 
 function readJson(key, fallback) {
   try {
@@ -42,4 +44,22 @@ export function loadConverterOverrides() {
 
 export function saveConverterOverrides(overrides) {
   localStorage.setItem(CONVERTER_KEY, JSON.stringify(overrides));
+}
+
+/** Logged trip expenses, newest first. */
+export function getExpenses() {
+  return readJson(EXPENSES_KEY, []);
+}
+
+export function saveExpenses(expenses) {
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+}
+
+/** The trip's tracked budget as { amount, currency }, or null if not set yet. */
+export function getTripBudget() {
+  return readJson(TRIP_BUDGET_KEY, null);
+}
+
+export function saveTripBudget(budget) {
+  localStorage.setItem(TRIP_BUDGET_KEY, JSON.stringify(budget));
 }
