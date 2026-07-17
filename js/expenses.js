@@ -23,19 +23,38 @@ const expenseListEl = document.getElementById("expenseList");
 const toast = document.getElementById("toast");
 
 // ---- State ----
-let tripBudget = getTripBudget() || deriveDefaultBudget();
 let expenses = getExpenses();
+let tripBudget = initTripBudget();
 let selectedFile = null;
 let ocrResult = null;
 
-/** Falls back to the last trip-planner draft's budget/currency, if any. */
-function deriveDefaultBudget() {
+/** Reads the trip-planner's current draft budget/currency, if any set. */
+function plannerBudget() {
   const draft = loadDraft();
   if (!draft || !draft.budget) return null;
   const amount = parseAmountFromBudget(draft.budget);
   if (!(amount > 0)) return null;
   const currency = detectLocation(draft.destination)?.cur || detectLocation(draft.origin)?.cur || "PHP";
-  return { amount, currency };
+  return { amount, currency, source: "planner" };
+}
+
+/**
+ * Trip budget stays live-linked to the trip planner (so changing the
+ * destination/budget there flows through here automatically) right up until
+ * the user manually edits it on this page, or logs an expense — either of
+ * those "locks in" their choice so nothing gets silently overwritten.
+ */
+function initTripBudget() {
+  const saved = getTripBudget();
+  if (saved && (saved.source !== "planner" || expenses.length)) return saved;
+
+  const fromPlanner = plannerBudget();
+  // Nothing locked in yet — either a first visit, or expenses were logged
+  // in an earlier session before this lock existed. Lock in the current
+  // best guess right now so it can never silently drift under already-
+  // logged expenses again.
+  if (expenses.length && fromPlanner) saveTripBudget(fromPlanner);
+  return fromPlanner;
 }
 
 function showToast(message) {
@@ -53,6 +72,15 @@ function totalSpent() {
 }
 
 // ---- Budget card ----
+function syncNoticeHtml() {
+  const fromPlanner = plannerBudget();
+  if (!fromPlanner || expenses.length) return "";
+  if (tripBudget && tripBudget.amount === fromPlanner.amount && tripBudget.currency === fromPlanner.currency) return "";
+  return `<button class="cv-toggle" id="syncBudgetBtn" type="button" style="display:block; margin-top:10px;">
+    🔄 Use Trip Planner's budget — ${escapeHtml(fmtMoney(fromPlanner.amount, fromPlanner.currency))}
+  </button>`;
+}
+
 function renderBudgetCard() {
   if (!tripBudget || !(tripBudget.amount > 0)) {
     budgetCard.innerHTML = `
@@ -69,7 +97,7 @@ function renderBudgetCard() {
       const amount = parseFloat(document.getElementById("budgetAmountInput").value);
       const currency = document.getElementById("budgetCurrencyInput").value;
       if (!(amount > 0)) { showToast("Enter a budget amount first"); return; }
-      tripBudget = { amount, currency };
+      tripBudget = { amount, currency, source: "manual" };
       saveTripBudget(tripBudget);
       renderBudgetCard();
     });
@@ -93,6 +121,7 @@ function renderBudgetCard() {
         <span class="of-total">${over ? "over your" : "left of"} ${fmtMoney(tripBudget.amount, tripBudget.currency)} budget</span>
       </div>
       <div class="budget-bar-track"><div class="budget-bar-fill ${over ? "over" : ""}" style="width:${pct}%;"></div></div>
+      ${syncNoticeHtml()}
     </div>
     <div class="budget-edit-row">
       <div class="field"><input type="number" id="budgetAmountInput" value="${tripBudget.amount}" min="0" step="0.01" /></div>
@@ -101,6 +130,12 @@ function renderBudgetCard() {
   `;
   document.getElementById("budgetAmountInput").addEventListener("change", updateBudgetFromInputs);
   document.getElementById("budgetCurrencyInput")?.addEventListener("change", updateBudgetFromInputs);
+  document.getElementById("syncBudgetBtn")?.addEventListener("click", () => {
+    tripBudget = plannerBudget();
+    saveTripBudget(tripBudget);
+    renderBudgetCard();
+    showToast("Synced from Trip Planner");
+  });
 }
 
 function updateBudgetFromInputs() {
@@ -108,7 +143,7 @@ function updateBudgetFromInputs() {
   const currencyInput = document.getElementById("budgetCurrencyInput");
   const currency = currencyInput ? currencyInput.value : tripBudget.currency;
   if (!(amount > 0)) return;
-  tripBudget = { amount, currency };
+  tripBudget = { amount, currency, source: "manual" };
   saveTripBudget(tripBudget);
   renderBudgetCard();
 }
@@ -126,16 +161,68 @@ fileInput.addEventListener("change", () => {
   if (fileInput.files[0]) selectFile(fileInput.files[0]);
 });
 
-function selectFile(file) {
-  if (!file.type.startsWith("image/")) { showToast("Please choose an image file"); return; }
-  selectedFile = file;
+/**
+ * Downscales and re-compresses an image client-side before upload. Smaller
+ * files both upload faster and process faster on OCR.Space (processing time
+ * grows with file size, especially on Engine 3) — with no accuracy trade-off
+ * for a normal phone photo, since 1600px is well past what's needed to read
+ * receipt text. PDFs pass through untouched (canvas can't process them).
+ */
+function compressImage(file, maxDimension = 1600, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        const scale = maxDimension / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (!blob) { reject(new Error("Compression failed")); return; }
+        const compressedName = file.name.replace(/\.\w+$/, "") + ".jpg";
+        resolve(new File([blob], compressedName, { type: "image/jpeg" }));
+      }, "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not load image")); };
+    img.src = url;
+  });
+}
+
+async function selectFile(file) {
+  const isPdf = file.type === "application/pdf";
+  const isSupportedImage = file.type === "image/jpeg" || file.type === "image/png";
+  if (!isPdf && !isSupportedImage) {
+    // Explicit allowlist, not just "image/*" — HEIC (the default on iPhone
+    // cameras) reports as an image type but can't be read by canvas, and
+    // silently falling through to OCR.Space with it just fails there instead
+    // with a much more confusing error.
+    showToast("Please choose a JPG, PNG, or PDF file (not HEIC/HEIF — check your camera's format setting)");
+    return;
+  }
   ocrResult = null;
   reviewArea.innerHTML = "";
-  const url = URL.createObjectURL(file);
+
+  try {
+    selectedFile = isPdf ? file : await compressImage(file);
+  } catch {
+    showToast("Couldn't process that image — try a different photo");
+    return;
+  }
+
+  const thumb = isPdf
+    ? `<div class="expense-cat-badge">📄</div>`
+    : `<img src="${URL.createObjectURL(selectedFile)}" alt="" />`;
   previewArea.innerHTML = `
     <div class="receipt-preview">
-      <img src="${url}" alt="" />
-      <div class="file-name">${escapeHtml(file.name)}</div>
+      ${thumb}
+      <div class="file-name">${escapeHtml(selectedFile.name)}</div>
     </div>
   `;
   scanBtn.style.display = "inline-block";
@@ -169,8 +256,12 @@ function renderReviewForm() {
   const warn = !r.readable
     ? `<div class="clarify-box"><span>⚠️</span><span>We couldn't clearly read the total on this receipt. Please check the amount below, or upload a clearer photo.</span></div>`
     : "";
+  const langNote = r.detectedLanguage
+    ? `<div class="clarify-box"><span>🌐</span><span>Detected ${escapeHtml(r.detectedLanguage)} receipt — translated to English below.</span></div>`
+    : "";
   reviewArea.innerHTML = `
     ${warn}
+    ${langNote}
     <div class="review-grid">
       <div>
         <div class="field-label">Merchant</div>
@@ -191,6 +282,14 @@ function renderReviewForm() {
       <div>
         <div class="field-label">Date</div>
         <div class="field"><input type="date" id="rvDate" value="${r.date || new Date().toISOString().slice(0, 10)}" /></div>
+      </div>
+      <div>
+        <div class="field-label">Time (optional)</div>
+        <div class="field"><input type="time" id="rvTime" value="${r.time || ""}" /></div>
+      </div>
+      <div>
+        <div class="field-label">Tax (optional)</div>
+        <div class="field"><input type="number" id="rvTax" value="${r.tax ?? ""}" min="0" step="0.01" placeholder="0.00" /></div>
       </div>
     </div>
     <div class="review-actions">
@@ -220,6 +319,8 @@ async function confirmExpense() {
   const amount = parseFloat(document.getElementById("rvTotal").value);
   const currency = document.getElementById("rvCurrency").value;
   const date = document.getElementById("rvDate").value;
+  const time = document.getElementById("rvTime").value || null;
+  const tax = document.getElementById("rvTax").value ? parseFloat(document.getElementById("rvTax").value) : null;
 
   if (!(amount > 0)) { showToast("Enter a valid total first"); return; }
 
@@ -248,11 +349,17 @@ async function confirmExpense() {
 
   expenses.unshift({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    merchant, category, date, amount, currency, budgetAmount,
+    merchant, category, date, time, tax, amount, currency, budgetAmount,
     note: ocrResult?.note || null,
+    detectedLanguage: ocrResult?.detectedLanguage || null,
     addedAt: new Date().toISOString(),
   });
   saveExpenses(expenses);
+  // Lock the budget in storage now that an expense exists against it — even
+  // if it was never manually edited, it must stop following planner changes
+  // from here on, or a later destination change would swap the currency out
+  // from under already-logged expenses.
+  saveTripBudget(tripBudget);
   resetUpload();
   renderBudgetCard();
   renderExpenseList();
@@ -270,11 +377,11 @@ function renderExpenseList() {
       <div class="expense-cat-badge">${CATEGORY_ICONS[e.category] || "📦"}</div>
       <div class="expense-details">
         <div class="expense-merchant">${escapeHtml(e.merchant)}</div>
-        <div class="expense-meta">${escapeHtml(e.category)}${e.date ? " · " + escapeHtml(e.date) : ""}</div>
+        <div class="expense-meta">${escapeHtml(e.category)}${e.date ? " · " + escapeHtml(e.date) : ""}${e.time ? " " + escapeHtml(e.time) : ""}</div>
       </div>
       <div class="expense-amount">
-        ${fmtMoney(e.budgetAmount, tripBudget.currency)}
-        ${e.currency !== tripBudget.currency ? `<span class="orig">${fmtMoney(e.amount, e.currency)}</span>` : ""}
+        ${fmtMoney(e.budgetAmount, tripBudget?.currency || e.currency)}
+        ${tripBudget && e.currency !== tripBudget.currency ? `<span class="orig">${fmtMoney(e.amount, e.currency)}</span>` : ""}
       </div>
       <button class="expense-delete" data-id="${e.id}" title="Delete">✕</button>
     </div>

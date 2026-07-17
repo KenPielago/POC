@@ -4,11 +4,17 @@
 <meta charset="UTF-8" />
 <title>Budgetra — Profile Builder</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #faf6f0;
+    /* Same tokens as css/styles.css — this page is self-contained but
+       shouldn't visibly drift from the rest of the app. */
+    --bg: #f7f4f0;
     --card: #ffffff;
-    --ink: #2a1a12;
+    --ink: #221a14;
     --muted: #8a7d70;
     --accent: #b5591f;
     --accent-dark: #8f4415;
@@ -16,14 +22,84 @@
     --icon-bg: #f3e9dc;
   }
   * { box-sizing: border-box; }
+  html { scrollbar-width: thin; scrollbar-color: #d3c8bb var(--bg); }
   body {
     margin: 0;
     min-height: 100vh;
-    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     background: var(--bg);
     color: var(--ink);
+    -webkit-font-smoothing: antialiased;
   }
-  .topbar { height: 6px; background: #1c120c; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #d3c8bb; border-radius: 999px;
+    border: 3px solid var(--bg); background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #bfb2a2; border-width: 2px; }
+  ::selection { background: rgba(181, 89, 31, .2); }
+  :where(button, a, select, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .app-shell { display: flex; align-items: flex-start; min-height: 100vh; }
+  .sidebar {
+    width: 232px; flex-shrink: 0;
+    position: sticky; top: 0; height: 100vh;
+    background: var(--ink); padding: 24px 16px 20px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 11px;
+    color: #fff; font-weight: 800; font-size: 17px; letter-spacing: -.01em;
+    padding: 4px 8px 26px;
+  }
+  .brand-mark {
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    display: flex; align-items: center; justify-content: center; color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+  }
+  .brand-mark svg { width: 17px; height: 17px; display: block; }
+  .sidebar-sec {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .12em;
+    color: rgba(255, 255, 255, .32); text-transform: uppercase;
+    padding: 0 12px 10px;
+  }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 4px; }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+    border-radius: 10px; color: rgba(255, 255, 255, .62); text-decoration: none;
+    font-size: 14px; font-weight: 600; transition: background .15s, color .15s;
+  }
+  .sidebar-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+  .sidebar-link.active {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 6px 16px rgba(181, 89, 31, .35);
+  }
+  .sidebar-icon { width: 20px; flex-shrink: 0; display: flex; justify-content: center; }
+  .sidebar-icon svg { width: 17px; height: 17px; display: block; }
+  .sidebar-foot {
+    margin-top: auto; padding: 12px 12px 0;
+    font-size: 11px; color: rgba(255, 255, 255, .28); letter-spacing: .02em;
+  }
+  .sidebar-main { flex: 1; min-width: 0; }
+  .sidebar-main > .wrap { animation: page-in .35s ease both; }
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(8px); }
+  }
+
+  @media (max-width: 720px) {
+    .app-shell { flex-direction: column; }
+    .sidebar {
+      width: auto; height: auto; align-self: stretch; z-index: 60;
+      flex-direction: row; align-items: center;
+      padding: 10px 12px; overflow-x: auto; gap: 6px;
+    }
+    .sidebar-brand { display: none; }
+    .sidebar-sec, .sidebar-foot { display: none; }
+    .sidebar-nav { flex-direction: row; gap: 6px; }
+    .sidebar-link { flex-direction: column; gap: 4px; padding: 8px 14px; font-size: 10.5px; white-space: nowrap; }
+  }
 
   .wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; }
   .header { text-align: center; margin-bottom: 40px; }
@@ -36,7 +112,12 @@
   }
   .interest-card {
     background: var(--card); border: 2px solid var(--border); border-radius: 16px;
-    padding: 24px 12px; transition: border-color .15s, box-shadow .15s;
+    padding: 24px 12px; cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .interest-card:not(.selected):not(.expanded):hover {
+    border-color: #dccfbe; transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(34, 26, 20, .08);
   }
   .interest-card.selected {
     border-color: var(--accent);
@@ -90,8 +171,12 @@
   .save-btn {
     background: var(--accent); color: #fff; border: none; border-radius: 10px;
     padding: 13px 32px; font-size: 14.5px; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: background .15s, transform .15s, box-shadow .15s;
   }
-  .save-btn:hover { background: var(--accent-dark); }
+  .save-btn:hover {
+    background: var(--accent-dark); transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(143, 68, 21, .3);
+  }
   .skip-link {
     display: block; text-align: center; margin-top: 16px;
     color: var(--muted); font-size: 13px; text-decoration: none;
@@ -108,8 +193,9 @@
 </head>
 <body>
 
-<div class="topbar"></div>
-
+<div class="app-shell">
+<div id="sidebar"></div>
+<div class="sidebar-main">
 <div class="wrap">
   <div class="header">
     <h1>What do you enjoy doing?</h1>
@@ -123,9 +209,12 @@
   </div>
   <a class="skip-link" href="index.html">Skip for now</a>
 </div>
+</div>
+</div>
 
 <div class="saved-toast" id="toast">Saved — heading to the trip planner…</div>
 
+<script type="module" src="js/sidebar.js"></script>
 <script>
   const INTERESTS = [
     { name: "Beach", icon: "🏖️", activities: ["Swimming", "Snorkeling", "Island Hopping", "Sunset Watching", "Beach Volleyball"] },

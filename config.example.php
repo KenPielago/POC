@@ -4,3 +4,6 @@
 // so it never gets committed.
 const GEMINI_API_KEY = "";
 const GEMINI_MODEL = 'gemini-flash-lite-latest';
+
+// OCR.Space credentials — from ocr.space/ocrapi -> free API key.
+const OCR_SPACE_API_KEY = "";

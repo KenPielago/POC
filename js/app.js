@@ -119,12 +119,11 @@ function flashInvalid(message) {
 (function renderProfileRow() {
   const interests = getProfileInterests();
   const row = document.getElementById("profileRow");
-  const expensesLink = `<a href="expenses.html">Track Expenses</a>`;
   if (interests.length) {
     row.innerHTML = interests.map(i => `<span class="profile-tag">${escapeHtml(i)}</span>`).join("")
-      + ` <a href="profile.html">Edit</a> · ${expensesLink}`;
+      + ` <a href="profile.html">Edit</a>`;
   } else {
-    row.innerHTML = `<a href="profile.html">Set up your travel interests →</a> · ${expensesLink}`;
+    row.innerHTML = `<a href="profile.html">Set up your travel interests →</a>`;
   }
 })();
 

@@ -4,10 +4,17 @@
 <meta charset="UTF-8" />
 <title>Budgetra — Plan Your Trip</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
+<div class="app-shell">
+<div id="sidebar"></div>
+<div class="sidebar-main">
 <div class="wrap">
   <div class="header">
     <h1>Plan Your Trip</h1>
@@ -18,7 +25,9 @@
 
   <div class="ask-pill">
     <input type="text" id="notes" placeholder="✨ Ask AI — e.g. beach trip under ₱10,000" autocomplete="off" />
-    <button class="ask-btn" id="askBtn" type="button" title="Ask AI">➤</button>
+    <button class="ask-btn" id="askBtn" type="button" title="Ask AI" aria-label="Ask AI">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></svg>
+    </button>
   </div>
   <div class="examples">
     <button class="example-chip" type="button" data-q="Where should I go for a beach trip under ₱10,000?">Beach trip under ₱10,000</button>
@@ -36,7 +45,9 @@
         </div>
         <div class="loc-list" id="originList"></div>
       </div>
-      <button class="swap-btn" id="swapBtn" type="button" title="Swap">⇄</button>
+      <button class="swap-btn" id="swapBtn" type="button" title="Swap" aria-label="Swap origin and destination">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+      </button>
       <div class="loc-field">
         <div class="field">
           <input type="text" id="destination" placeholder="To — city" autocomplete="off" />
@@ -75,9 +86,12 @@
 
   <div class="result-area" id="resultArea"></div>
 </div>
+</div>
+</div>
 
 <div class="toast" id="toast"></div>
 
+<script type="module" src="js/sidebar.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

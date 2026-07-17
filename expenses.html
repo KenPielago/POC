@@ -4,26 +4,33 @@
 <meta charset="UTF-8" />
 <title>Budgetra — Track Expenses</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
+<div class="app-shell">
+<div id="sidebar"></div>
+<div class="sidebar-main">
 <div class="wrap">
   <div class="header">
     <h1>Track Expenses</h1>
     <p>Scan a receipt and Budgetra keeps your trip budget up to date.</p>
   </div>
 
-  <div class="profile-row"><a href="index.html">← Back to Trip Planner</a></div>
-
   <div class="section budget-card" id="budgetCard"></div>
 
   <div class="section">
     <div class="sec-label">Scan a Receipt</div>
     <div class="dropzone" id="dropzone">
-      <div class="dz-icon">🧾</div>
-      <div class="dz-text">Tap to choose a photo, or drag one here</div>
-      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" capture="environment" hidden />
+      <div class="dz-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+      </div>
+      <div class="dz-text">Tap to choose a photo or PDF, or drag one here</div>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,application/pdf" capture="environment" hidden />
     </div>
     <div id="previewArea"></div>
     <button class="btn-primary" id="scanBtn" type="button" style="margin-top:16px; display:none;">Scan Receipt</button>
@@ -35,9 +42,12 @@
     <div class="expense-list" id="expenseList"></div>
   </div>
 </div>
+</div>
+</div>
 
 <div class="toast" id="toast"></div>
 
+<script type="module" src="js/sidebar.js"></script>
 <script type="module" src="js/expenses.js"></script>
 </body>
 </html>
