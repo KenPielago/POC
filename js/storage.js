@@ -3,7 +3,6 @@
 const PROFILE_KEY = "budgetra_profile_interests";
 const ORIGIN_KEY = "budgetra_origin";
 const DRAFT_KEY = "budgetra_draft";
-const CONVERTER_KEY = "budgetra_converter";
 const EXPENSES_KEY = "budgetra_expenses";
 const TRIP_BUDGET_KEY = "budgetra_trip_budget";
 
@@ -34,16 +33,6 @@ export function saveDraft(fields) {
 /** Origin remembered from a previous visit ("" when unknown). */
 export function loadRememberedOrigin() {
   return localStorage.getItem(ORIGIN_KEY) || "";
-}
-
-/** Manual currency overrides picked under the converter's View details. */
-export function loadConverterOverrides() {
-  const saved = readJson(CONVERTER_KEY, {});
-  return { home: saved.home || "", dest: saved.dest || "" };
-}
-
-export function saveConverterOverrides(overrides) {
-  localStorage.setItem(CONVERTER_KEY, JSON.stringify(overrides));
 }
 
 /** Logged trip expenses, newest first. */

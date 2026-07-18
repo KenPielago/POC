@@ -7,3 +7,7 @@ const GEMINI_MODEL = 'gemini-flash-lite-latest';
 
 // OCR.Space credentials — from ocr.space/ocrapi -> free API key.
 const OCR_SPACE_API_KEY = "";
+
+// SerpApi credentials — from serpapi.com/manage-api-key. Powers the Flight
+// Search page's real-time results via the Google Flights engine.
+const SERPAPI_KEY = "";

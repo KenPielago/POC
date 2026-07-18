@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Budgetra — Flight Search</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div class="app-shell">
+<div id="sidebar"></div>
+<div class="sidebar-main">
+<div class="wrap wrap-wide">
+  <div class="header">
+    <h1>Find Flights</h1>
+    <p>Search real-time fares and lock in a ticket price against your trip budget.</p>
+  </div>
+
+  <div class="section">
+    <div class="trip-type-tabs" id="tripTypeTabs">
+      <button class="trip-type-tab active" type="button" data-type="round-trip">Round-trip</button>
+      <button class="trip-type-tab" type="button" data-type="one-way">One-way</button>
+      <button class="trip-type-tab" type="button" data-type="multi-city">Multi-city</button>
+    </div>
+
+    <div id="legsContainer"></div>
+
+    <div class="flight-meta-row">
+      <div>
+        <div class="field-label">Travelers</div>
+        <div class="field"><input type="number" id="travelers" min="1" max="9" value="1" /></div>
+      </div>
+      <div>
+        <div class="field-label">Cabin Class</div>
+        <div class="field">
+          <select id="cabinClass">
+            <option value="economy">Economy</option>
+            <option value="premium">Premium Economy</option>
+            <option value="business">Business</option>
+            <option value="first">First</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary search-flights-btn" id="searchBtn" type="button">Search Flights</button>
+    </div>
+  </div>
+
+  <div id="resultsArea"></div>
+</div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/sidebar.js"></script>
+<script type="module" src="js/flights.js"></script>
+</body>
+</html>

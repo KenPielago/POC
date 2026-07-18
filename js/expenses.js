@@ -15,18 +15,30 @@ const CATEGORY_ICONS = {
 // ---- Elements ----
 const budgetCard = document.getElementById("budgetCard");
 const dropzone = document.getElementById("dropzone");
-const fileInput = document.getElementById("fileInput");
+const fileInputCamera = document.getElementById("fileInputCamera");
+const fileInputGallery = document.getElementById("fileInputGallery");
 const previewArea = document.getElementById("previewArea");
 const scanBtn = document.getElementById("scanBtn");
 const reviewArea = document.getElementById("reviewArea");
 const expenseListEl = document.getElementById("expenseList");
 const toast = document.getElementById("toast");
+const uploadChooser = document.getElementById("uploadChooser");
+const uploadChooserBackdrop = document.getElementById("uploadChooserBackdrop");
+const chooseCameraBtn = document.getElementById("chooseCameraBtn");
+const chooseGalleryBtn = document.getElementById("chooseGalleryBtn");
+const uploadChooserCancel = document.getElementById("uploadChooserCancel");
+const cameraOverlay = document.getElementById("cameraOverlay");
+const cameraVideo = document.getElementById("cameraVideo");
+const cameraCanvas = document.getElementById("cameraCanvas");
+const cameraCloseBtn = document.getElementById("cameraCloseBtn");
+const cameraShutterBtn = document.getElementById("cameraShutterBtn");
 
 // ---- State ----
 let expenses = getExpenses();
 let tripBudget = initTripBudget();
 let selectedFile = null;
 let ocrResult = null;
+let cameraStream = null;
 
 /** Reads the trip-planner's current draft budget/currency, if any set. */
 function plannerBudget() {
@@ -34,7 +46,10 @@ function plannerBudget() {
   if (!draft || !draft.budget) return null;
   const amount = parseAmountFromBudget(draft.budget);
   if (!(amount > 0)) return null;
-  const currency = detectLocation(draft.destination)?.cur || detectLocation(draft.origin)?.cur || "PHP";
+  // The AI already resolves an exact currency for whatever it parsed out of
+  // the free-text query — prefer that over guessing from a destination name
+  // that might not be an exact match in our curated city list.
+  const currency = draft.budgetCurrency || detectLocation(draft.destination)?.cur || detectLocation(draft.origin)?.cur || "PHP";
   return { amount, currency, source: "planner" };
 }
 
@@ -109,12 +124,6 @@ function renderBudgetCard() {
   const over = remaining < 0;
   const pct = tripBudget.amount > 0 ? Math.min(100, Math.max(0, (spent / tripBudget.amount) * 100)) : 0;
 
-  // Currency is locked once an expense exists — changing it wouldn't
-  // retroactively re-convert already-logged expenses.
-  const currencyControl = expenses.length
-    ? `<span class="cur-badge show">${tripBudget.currency}</span>`
-    : `<div class="field"><select id="budgetCurrencyInput">${currencyOptions(tripBudget.currency)}</select></div>`;
-
   budgetCard.innerHTML = `
     <div class="budget-figures">
       <div class="budget-remaining">${fmtMoney(Math.abs(remaining), tripBudget.currency)}
@@ -125,11 +134,11 @@ function renderBudgetCard() {
     </div>
     <div class="budget-edit-row">
       <div class="field"><input type="number" id="budgetAmountInput" value="${tripBudget.amount}" min="0" step="0.01" /></div>
-      ${currencyControl}
+      <div class="field"><select id="budgetCurrencyInput">${currencyOptions(tripBudget.currency)}</select></div>
     </div>
   `;
   document.getElementById("budgetAmountInput").addEventListener("change", updateBudgetFromInputs);
-  document.getElementById("budgetCurrencyInput")?.addEventListener("change", updateBudgetFromInputs);
+  document.getElementById("budgetCurrencyInput").addEventListener("change", handleCurrencyChange);
   document.getElementById("syncBudgetBtn")?.addEventListener("click", () => {
     tripBudget = plannerBudget();
     saveTripBudget(tripBudget);
@@ -140,16 +149,77 @@ function renderBudgetCard() {
 
 function updateBudgetFromInputs() {
   const amount = parseFloat(document.getElementById("budgetAmountInput").value);
-  const currencyInput = document.getElementById("budgetCurrencyInput");
-  const currency = currencyInput ? currencyInput.value : tripBudget.currency;
   if (!(amount > 0)) return;
-  tripBudget = { amount, currency, source: "manual" };
+  tripBudget = { ...tripBudget, amount, source: "manual" };
   saveTripBudget(tripBudget);
   renderBudgetCard();
 }
 
+/**
+ * Switching currencies has to re-convert every already-logged expense too —
+ * otherwise their budgetAmount stays numerically the same but gets relabeled
+ * into a wildly different real value (¥199,999 silently becoming ₱199,999),
+ * corrupting the remaining-budget math. Re-converts from each expense's own
+ * original amount/currency (not its old budgetAmount) to avoid compounding
+ * rounding across a double conversion.
+ */
+async function handleCurrencyChange() {
+  const select = document.getElementById("budgetCurrencyInput");
+  const newCurrency = select.value;
+  const oldCurrency = tripBudget.currency;
+  if (newCurrency === oldCurrency) return;
+
+  if (!expenses.length) {
+    tripBudget = { ...tripBudget, currency: newCurrency, source: "manual" };
+    saveTripBudget(tripBudget);
+    renderBudgetCard();
+    return;
+  }
+
+  select.disabled = true;
+  showToast(`Converting your budget to ${newCurrency}…`);
+
+  try {
+    const budgetConv = await requestCurrencyConversion(tripBudget.amount, oldCurrency, newCurrency);
+    if (!budgetConv.success) throw new Error(budgetConv.error || "Conversion failed");
+
+    const expenseConversions = await Promise.all(
+      expenses.map(e => e.currency === newCurrency
+        ? Promise.resolve({ success: true, converted: e.amount })
+        : requestCurrencyConversion(e.amount, e.currency, newCurrency))
+    );
+    const failed = expenseConversions.find(c => !c.success);
+    if (failed) throw new Error(failed.error || "Conversion failed");
+
+    expenses = expenses.map((e, i) => ({ ...e, budgetAmount: expenseConversions[i].converted }));
+    saveExpenses(expenses);
+
+    tripBudget = { amount: budgetConv.converted, currency: newCurrency, source: "manual" };
+    saveTripBudget(tripBudget);
+
+    renderBudgetCard();
+    renderExpenseList();
+    showToast(`Budget and ${expenses.length} expense${expenses.length > 1 ? "s" : ""} converted to ${newCurrency}`);
+  } catch (e) {
+    showToast(`Couldn't convert currency: ${e.message}`);
+    renderBudgetCard();
+  }
+}
+
 // ---- Receipt upload ----
-dropzone.addEventListener("click", () => fileInput.click());
+function openUploadChooser() {
+  uploadChooser.hidden = false;
+}
+function closeUploadChooser() {
+  uploadChooser.hidden = true;
+}
+
+dropzone.addEventListener("click", openUploadChooser);
+uploadChooserBackdrop.addEventListener("click", closeUploadChooser);
+uploadChooserCancel.addEventListener("click", closeUploadChooser);
+chooseCameraBtn.addEventListener("click", () => { closeUploadChooser(); openCamera(); });
+chooseGalleryBtn.addEventListener("click", () => { closeUploadChooser(); fileInputGallery.click(); });
+
 dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag-over"); });
 dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag-over"));
 dropzone.addEventListener("drop", (e) => {
@@ -157,8 +227,59 @@ dropzone.addEventListener("drop", (e) => {
   dropzone.classList.remove("drag-over");
   if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
 });
-fileInput.addEventListener("change", () => {
-  if (fileInput.files[0]) selectFile(fileInput.files[0]);
+fileInputCamera.addEventListener("change", () => {
+  if (fileInputCamera.files[0]) selectFile(fileInputCamera.files[0]);
+});
+fileInputGallery.addEventListener("change", () => {
+  if (fileInputGallery.files[0]) selectFile(fileInputGallery.files[0]);
+});
+
+// ---- Live camera capture ----
+// A plain <input capture> only hands off to a camera app on mobile browsers
+// — desktops have no such handoff and just fall back to the file picker. A
+// real getUserMedia() viewfinder gives an actual camera on every platform,
+// including a laptop's webcam. fileInputCamera stays as the fallback for
+// browsers/contexts where getUserMedia is unavailable (e.g. non-HTTPS,
+// non-localhost origins, where the browser hides the API entirely).
+async function openCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    fileInputCamera.click();
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+  } catch {
+    showToast("Couldn't access your camera — check permissions, or choose a photo instead.");
+    return;
+  }
+  cameraVideo.srcObject = cameraStream;
+  cameraOverlay.hidden = false;
+}
+
+function closeCamera() {
+  cameraStream?.getTracks().forEach(t => t.stop());
+  cameraStream = null;
+  cameraVideo.srcObject = null;
+  cameraOverlay.hidden = true;
+}
+
+cameraCloseBtn.addEventListener("click", closeCamera);
+
+cameraShutterBtn.addEventListener("click", () => {
+  const w = cameraVideo.videoWidth;
+  const h = cameraVideo.videoHeight;
+  cameraCanvas.width = w;
+  cameraCanvas.height = h;
+  cameraCanvas.getContext("2d").drawImage(cameraVideo, 0, 0, w, h);
+  cameraCanvas.toBlob((blob) => {
+    if (!blob) { showToast("Couldn't capture that photo — try again."); return; }
+    const file = new File([blob], `receipt-${Date.now()}.jpg`, { type: "image/jpeg" });
+    closeCamera();
+    selectFile(file);
+  }, "image/jpeg", 0.9);
 });
 
 /**
@@ -305,7 +426,8 @@ function renderReviewForm() {
 function resetUpload() {
   selectedFile = null;
   ocrResult = null;
-  fileInput.value = "";
+  fileInputCamera.value = "";
+  fileInputGallery.value = "";
   previewArea.innerHTML = "";
   reviewArea.innerHTML = "";
   scanBtn.style.display = "none";

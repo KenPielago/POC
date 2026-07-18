@@ -30,7 +30,8 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
       </div>
       <div class="dz-text">Tap to choose a photo or PDF, or drag one here</div>
-      <input type="file" id="fileInput" accept="image/jpeg,image/png,application/pdf" capture="environment" hidden />
+      <input type="file" id="fileInputCamera" accept="image/jpeg,image/png" capture="environment" hidden />
+      <input type="file" id="fileInputGallery" accept="image/jpeg,image/png,application/pdf" hidden />
     </div>
     <div id="previewArea"></div>
     <button class="btn-primary" id="scanBtn" type="button" style="margin-top:16px; display:none;">Scan Receipt</button>
@@ -44,6 +45,45 @@
 </div>
 </div>
 </div>
+
+<div class="upload-chooser" id="uploadChooser" hidden>
+  <div class="upload-chooser-backdrop" id="uploadChooserBackdrop"></div>
+  <div class="upload-chooser-sheet">
+    <div class="upload-chooser-title">Add a Receipt</div>
+    <button class="upload-chooser-option" id="chooseCameraBtn" type="button">
+      <span class="upload-chooser-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      </span>
+      <span>
+        <span class="upload-chooser-label">Take Photo</span>
+        <span class="upload-chooser-sub">Use your camera</span>
+      </span>
+    </button>
+    <button class="upload-chooser-option" id="chooseGalleryBtn" type="button">
+      <span class="upload-chooser-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      </span>
+      <span>
+        <span class="upload-chooser-label">Choose Photo or PDF</span>
+        <span class="upload-chooser-sub">From your files</span>
+      </span>
+    </button>
+    <button class="upload-chooser-cancel" id="uploadChooserCancel" type="button">Cancel</button>
+  </div>
+</div>
+
+<div class="camera-overlay" id="cameraOverlay" hidden>
+  <div class="camera-header">
+    <button class="camera-close" id="cameraCloseBtn" type="button" aria-label="Close camera">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <video id="cameraVideo" autoplay playsinline muted></video>
+  <div class="camera-controls">
+    <button class="camera-shutter" id="cameraShutterBtn" type="button" aria-label="Take photo"></button>
+  </div>
+</div>
+<canvas id="cameraCanvas" hidden></canvas>
 
 <div class="toast" id="toast"></div>
 

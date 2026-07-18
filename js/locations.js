@@ -80,66 +80,6 @@ export const LOCATIONS = [
 
 export const SUPPORTED_CURRENCIES = [...new Set(LOCATIONS.map(l => l.cur))].sort();
 
-/** <img> tag for a location's flag (flagcdn, retina-ready). */
-export function flagImg(iso, size = 20) {
-  return `<img src="https://flagcdn.com/w${size}/${iso}.png" srcset="https://flagcdn.com/w${size * 2}/${iso}.png 2x" alt="" loading="lazy" />`;
-}
-
-/**
- * Ranked type-ahead matches for the picker dropdown (best 7).
- * @param {string} query
- * @param {{ citiesOnly?: boolean }} [opts] when citiesOnly is set, whole-country
- *   entries (c === "") are excluded so results are all specific cities.
- */
-export function matchLocations(query, { citiesOnly = false } = {}) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  return LOCATIONS
-    .filter(loc => !citiesOnly || loc.c)
-    .map(loc => {
-      const name = loc.n.toLowerCase();
-      const country = (loc.c || "").toLowerCase();
-      let score = -1;
-      if (name.startsWith(q)) score = 0;
-      else if ((loc.a || []).some(a => a.startsWith(q))) score = 1;
-      else if (name.includes(q)) score = 2;
-      else if (country.startsWith(q)) score = 3;
-      else if (country.includes(q)) score = 4;
-      return { loc, score };
-    })
-    .filter(m => m.score >= 0)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 7)
-    .map(m => m.loc);
-}
-
-/**
- * Cities to suggest when a cities-only field is focused while still empty
- * (nothing to type-ahead match against yet). Personalized to the user's
- * saved profile interests when given; otherwise the curated popular list.
- * @param {string[]} [interests] categories from the Profile Builder
- * @returns {{ cities: object[], personalized: boolean }}
- */
-export function getPopularCities(interests = []) {
-  const defaults = LOCATIONS.filter(l => l.p);
-  if (!interests.length) return { cities: defaults, personalized: false };
-
-  const matched = LOCATIONS
-    .filter(l => l.c && l.t)
-    .map(loc => ({ loc, score: loc.t.filter(t => interests.includes(t)).length }))
-    .filter(m => m.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .map(m => m.loc);
-
-  if (!matched.length) return { cities: defaults, personalized: false };
-
-  // Top up with curated defaults if interests alone don't fill the list,
-  // without duplicating a city already picked by interest match.
-  const seen = new Set(matched.map(l => l.n));
-  const topped = matched.concat(defaults.filter(l => !seen.has(l.n)));
-  return { cities: topped.slice(0, 8), personalized: true };
-}
-
 /** Best-effort match for free-typed text (used on blur / draft restore). */
 export function detectLocation(text) {
   const q = (text || "").trim().toLowerCase();
